@@ -1,6 +1,7 @@
 package com.app.todoapp.controller;
 
-import com.app.todoapp.model.TaskDTO;
+import com.app.todoapp.model.Task;
+import com.app.todoapp.model.User;
 import com.app.todoapp.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,27 +21,28 @@ public class TaskController {
     private TaskService taskService;
 
     @GetMapping
-    public Page<TaskDTO> getAllTasks(
+    public Page<Task> getAllTasks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return taskService.getAllTasks(page, size);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
+    public ResponseEntity<Task> getTaskById(@PathVariable Long id) {
         return taskService.getTaskById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<TaskDTO> createTask(@Valid @RequestBody TaskDTO taskDTO) {
-        return ResponseEntity.ok(taskService.createTask(taskDTO));
+    public ResponseEntity<Task> createTask(@Valid @RequestBody Task task) {
+        User currentUser = taskService.getCurrentUser(); // Получаем авторизованного пользователя
+        return ResponseEntity.ok(taskService.createTask(task, currentUser));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id, @Valid @RequestBody TaskDTO taskDTO) {
-        TaskDTO updatedTask = taskService.updateTask(id, taskDTO);
+    public ResponseEntity<Task> updateTask(@PathVariable Long id, @Valid @RequestBody Task task) {
+        Task updatedTask = taskService.updateTask(id, task);
         if (updatedTask != null) {
             return ResponseEntity.ok(updatedTask);
         }
@@ -53,7 +55,6 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
